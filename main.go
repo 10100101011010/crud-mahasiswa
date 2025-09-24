@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+  "strings"
 
 	"github.com/joho/godotenv"
 	_ "github.com/go-sql-driver/mysql"
@@ -49,6 +50,8 @@ func main() {
 
 	log.Println("Connected to MySQL!")
 	http.HandleFunc("/", handler)
+  http.HandleFunc("/tambah", tambahHandler)
+	http.HandleFunc("/edit/", editHandler)
 	log.Println("Server running at http://localhost:8080")
 	http.ListenAndServe(":8080", nil)
 }
@@ -77,6 +80,70 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "Template error: "+err.Error(), 500)
 	}
+}
+
+// tambah mahasiswa, form tambah, submit
+func tambahHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		t := template.Must(template.New("form").Parse(formTemplate))
+		t.Execute(w, nil)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil { 
+		http.Error(w, "Form error", 400)
+		return
+	}
+
+	nama := r.FormValue("nama")
+	npm := r.FormValue("npm")
+	kelas := r.FormValue("kelas")
+	minat := r.FormValue("minat")
+
+	_, err := db.Exec("INSERT INTO mahasiswa (Nama, NPM, Kelas, Minat) VALUES (?, ?, ?, ?)", nama, npm, kelas, minat)
+	if err != nil {
+		http.Error(w, "Insert failed: "+err.Error(), 500)
+		return
+	}
+
+	http.Redirect(w, r, "/", http.StatusSeeOther) 
+}
+
+// edit mahasiswa, form edit, submit
+func editHandler(w http.ResponseWriter, r *http.Request) {
+	id := strings.TrimPrefix(r.URL.Path, "/edit/")
+
+	if r.Method == http.MethodGet {
+		row := db.QueryRow("SELECT ID, Nama, NPM, Kelas, Minat FROM mahasiswa WHERE ID = ?", id)
+		var m Mahasiswa
+		err := row.Scan(&m.ID, &m.Nama, &m.NPM, &m.Kelas, &m.Minat)
+		if err != nil {
+			http.Error(w, "Mahasiswa not found", 404)
+			return
+		}
+
+		t := template.Must(template.New("form").Parse(formTemplate))
+		t.Execute(w, m)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil { //also double check 
+		http.Error(w, "Form error", 400)
+		return
+	}
+
+	nama := r.FormValue("nama")
+	npm := r.FormValue("npm")
+	kelas := r.FormValue("kelas")
+	minat := r.FormValue("minat")
+
+	_, err := db.Exec("UPDATE mahasiswa SET Nama=?, NPM=?, Kelas=?, Minat=? WHERE ID=?", nama, npm, kelas, minat, id)
+	if err != nil {
+		http.Error(w, "Update failed: "+err.Error(), 500)
+		return
+	}
+
+	http.Redirect(w, r, "/", http.StatusSeeOther) //303
 }
 
 // hal utama
@@ -168,6 +235,75 @@ const htmlTemplate = `
         {{end}}
       </tbody>
     </table>
+  </div>
+</body>
+</html>
+`
+
+// hal edit, tambah
+const formTemplate = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{if .ID}}Edit{{else}}Tambah{{end}} Mahasiswa</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f8f9fa;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      background: #fff;
+      padding: 20px;
+      border-radius: 6px;
+      max-width: 600px;
+      margin: auto;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h2 { margin-bottom: 20px; }
+    label { display: block; margin-top: 10px; font-weight: bold; }
+    input[type="text"] {
+      width: 580px;
+      padding: 8px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .btn {
+      padding: 8px 14px;
+      margin-top: 15px;
+      border-radius: 4px;
+      text-decoration: none;
+      color: white;
+      font-size: 14px;
+      display: inline-block;
+    }
+    .submit { background: #0d6efd; border: none; cursor: pointer; }
+    .cancel { background: #6c757d; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>{{if .ID}}Edit{{else}}Tambah{{end}} Mahasiswa</h2>
+    <form method="POST" action="{{if .ID}}/edit/{{.ID}}{{else}}/tambah{{end}}">
+      <label>Nama:</label>
+      <input type="text" name="nama" value="{{.Nama}}" required>
+
+      <label>NPM:</label>
+      <input type="text" name="npm" value="{{.NPM}}" required>
+
+      <label>Kelas:</label>
+      <input type="text" name="kelas" value="{{.Kelas}}" required>
+
+      <label>Minat:</label>
+      <input type="text" name="minat" value="{{.Minat}}" required>
+
+      <button type="submit" class="btn submit">{{if .ID}}Update{{else}}Simpan{{end}}</button>
+      <a href="/" class="btn cancel">Batal</a>
+    </form>
   </div>
 </body>
 </html>
