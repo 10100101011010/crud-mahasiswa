@@ -23,6 +23,7 @@ type Mahasiswa struct {
 
 var db *sql.DB
 var tmpl = template.Must(template.New("main").Parse(htmlTemplate))
+var detailsTmpl = template.Must(template.New("details").Parse(detailsTemplate))
 
 func main() {
 	var err error
@@ -53,6 +54,7 @@ func main() {
   http.HandleFunc("/tambah", tambahHandler)
 	http.HandleFunc("/edit/", editHandler)
   http.HandleFunc("/delete/", hapusHandler)
+	http.HandleFunc("/details/", detailsHandler)
 	log.Println("Server running at http://localhost:8080")
 	http.ListenAndServe(":8080", nil)
 }
@@ -156,6 +158,24 @@ func hapusHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+// tampil detail mahasiswa
+func detailsHandler(w http.ResponseWriter, r *http.Request) {
+	id := strings.TrimPrefix(r.URL.Path, "/details/")
+
+	row := db.QueryRow("SELECT ID, Nama, NPM, Kelas, Minat FROM mahasiswa WHERE ID = ?", id)
+	var m Mahasiswa
+	err := row.Scan(&m.ID, &m.Nama, &m.NPM, &m.Kelas, &m.Minat)
+	if err != nil {
+		http.Error(w, "Mahasiswa not found: "+err.Error(), http.StatusNotFound)
+		return
+	}
+
+	err = detailsTmpl.Execute(w, m)
+	if err != nil {
+		http.Error(w, "Template error: "+err.Error(), http.StatusInternalServerError)
+	}
 }
 
 // hal utama
@@ -316,6 +336,61 @@ const formTemplate = `
       <button type="submit" class="btn submit">{{if .ID}}Update{{else}}Simpan{{end}}</button>
       <a href="/" class="btn cancel">Batal</a>
     </form>
+  </div>
+</body>
+</html>
+`
+
+// hal detail
+const detailsTemplate = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Detail Mahasiswa</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f8f9fa;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      background: #fff;
+      padding: 20px;
+      border-radius: 6px;
+      max-width: 600px;
+      margin: auto;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h2 { margin-bottom: 20px; }
+    .info { margin-bottom: 10px; }
+    .label { font-weight: bold; display: inline-block; width: 80px; }
+    .btn {
+      padding: 8px 14px;
+      margin-top: 15px;
+      border-radius: 4px;
+      text-decoration: none;
+      color: white;
+      font-size: 14px;
+      display: inline-block;
+    }
+    .back { background: #6c757d; }
+    .edit { background: #ffc107; color: #000; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Detail Mahasiswa</h2>
+    <div class="info"><span class="label">ID:</span> {{.ID}}</div>
+    <div class="info"><span class="label">Nama:</span> {{.Nama}}</div>
+    <div class="info"><span class="label">NPM:</span> {{.NPM}}</div>
+    <div class="info"><span class="label">Kelas:</span> {{.Kelas}}</div>
+    <div class="info"><span class="label">Minat:</span> {{.Minat}}</div>
+
+    <a href="/" class="btn back">Kembali</a>
+    <a href="/edit/{{.ID}}" class="btn edit">Edit</a>
   </div>
 </body>
 </html>
