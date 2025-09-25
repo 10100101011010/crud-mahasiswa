@@ -12,7 +12,6 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-
 type Mahasiswa struct { 
 	ID    int
 	Nama  string
@@ -66,6 +65,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Database error: "+err.Error(), 500)
 		return
 	}
+
 	defer rows.Close()
 
 	var mahasiswaList []Mahasiswa
@@ -85,7 +85,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// tambah mahasiswa, form tambah, submit
+// tambah mahasiswa
 func tambahHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		t := template.Must(template.New("form").Parse(formTemplate))
@@ -112,13 +112,14 @@ func tambahHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther) 
 }
 
-// edit mahasiswa, form edit, submit
+// edit mahasiswa
 func editHandler(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimPrefix(r.URL.Path, "/edit/")
 
 	if r.Method == http.MethodGet {
 		row := db.QueryRow("SELECT ID, Nama, NPM, Kelas, Minat FROM mahasiswa WHERE ID = ?", id)
 		var m Mahasiswa
+
 		err := row.Scan(&m.ID, &m.Nama, &m.NPM, &m.Kelas, &m.Minat)
 		if err != nil {
 			http.Error(w, "Mahasiswa not found", 404)
@@ -130,7 +131,7 @@ func editHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := r.ParseForm(); err != nil { //also double check 
+	if err := r.ParseForm(); err != nil { 
 		http.Error(w, "Form error", 400)
 		return
 	}
@@ -146,21 +147,23 @@ func editHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/", http.StatusSeeOther) //303
+	http.Redirect(w, r, "/", http.StatusSeeOther) 
 }
 
 // hapus mahasiswa
 func hapusHandler(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimPrefix(r.URL.Path, "/delete/")
+
 	_, err := db.Exec("DELETE FROM mahasiswa WHERE ID = ?", id)
 	if err != nil {
 		http.Error(w, "Delete failed: "+err.Error(), 500)
 		return
 	}
+
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
-// tampil detail mahasiswa
+// detail mahasiswa
 func detailsHandler(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimPrefix(r.URL.Path, "/details/")
 
