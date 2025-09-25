@@ -52,6 +52,7 @@ func main() {
 	http.HandleFunc("/", handler)
   http.HandleFunc("/tambah", tambahHandler)
 	http.HandleFunc("/edit/", editHandler)
+  http.HandleFunc("/delete/", hapusHandler)
 	log.Println("Server running at http://localhost:8080")
 	http.ListenAndServe(":8080", nil)
 }
@@ -144,6 +145,17 @@ func editHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, "/", http.StatusSeeOther) //303
+}
+
+// hapus mahasiswa
+func hapusHandler(w http.ResponseWriter, r *http.Request) {
+	id := strings.TrimPrefix(r.URL.Path, "/delete/")
+	_, err := db.Exec("DELETE FROM mahasiswa WHERE ID = ?", id)
+	if err != nil {
+		http.Error(w, "Delete failed: "+err.Error(), 500)
+		return
+	}
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 // hal utama
