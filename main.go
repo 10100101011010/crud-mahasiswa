@@ -1,23 +1,23 @@
 package main
 
 import (
-	"database/sql"
-	"html/template"
-	"log"
-	"net/http"
-	"os"
+  "database/sql"
+  "html/template"
+  "log"
+  "net/http"
+  "os"
   "strings"
 
-	"github.com/joho/godotenv"
-	_ "github.com/go-sql-driver/mysql"
+  "github.com/joho/godotenv"
+  _ "github.com/go-sql-driver/mysql"
 )
 
 type Mahasiswa struct { 
-	ID    int
-	Nama  string
-	NPM   string
-	Kelas string
-	Minat string
+  ID    int
+  Nama  string
+  NPM   string
+  Kelas string
+  Minat string
 }
 
 var db *sql.DB
@@ -25,160 +25,160 @@ var tmpl = template.Must(template.New("main").Parse(htmlTemplate))
 var detailsTmpl = template.Must(template.New("details").Parse(detailsTemplate))
 
 func main() {
-	var err error
+  var err error
 
-	err = godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
+  err = godotenv.Load()
+  if err != nil {
+    log.Fatal("Error loading .env file")
+  }
 
-	dsn := os.Getenv("DB_USER") + ":" +
-		os.Getenv("DB_PASS") + "@tcp(" +
-		os.Getenv("DB_HOST") + ":" +
-		os.Getenv("DB_PORT") + ")/" +
-		os.Getenv("DB_NAME")
+  dsn := os.Getenv("DB_USER") + ":" +
+    os.Getenv("DB_PASS") + "@tcp(" +
+    os.Getenv("DB_HOST") + ":" +
+    os.Getenv("DB_PORT") + ")/" +
+    os.Getenv("DB_NAME")
 
-	db, err = sql.Open("mysql", dsn)
-	if err != nil {
-		log.Fatal("Error opening database:", err)
-	}
-	defer db.Close()
+  db, err = sql.Open("mysql", dsn)
+  if err != nil {
+    log.Fatal("Error opening database:", err)
+  }
+  defer db.Close()
 
-	if err = db.Ping(); err != nil {
-		log.Fatal("Database connection failed:", err)
-	}
+  if err = db.Ping(); err != nil {
+    log.Fatal("Database connection failed:", err)
+  }
 
-	log.Println("Connected to MySQL!")
-	http.HandleFunc("/", handler)
+  log.Println("Connected to MySQL!")
+  http.HandleFunc("/", handler)
   http.HandleFunc("/tambah", tambahHandler)
-	http.HandleFunc("/edit/", editHandler)
+  http.HandleFunc("/edit/", editHandler)
   http.HandleFunc("/delete/", hapusHandler)
-	http.HandleFunc("/details/", detailsHandler)
-	log.Println("Server running at http://localhost:8080")
-	http.ListenAndServe(":8080", nil)
+  http.HandleFunc("/details/", detailsHandler)
+  log.Println("Server running at http://localhost:8080")
+  http.ListenAndServe(":8080", nil)
 }
 
 // list mahasiswa
 func handler(w http.ResponseWriter, r *http.Request) {
-	rows, err := db.Query("SELECT ID, Nama, NPM, Kelas, Minat FROM mahasiswa")
-	if err != nil {
-		http.Error(w, "Database error: "+err.Error(), 500)
-		return
-	}
+  rows, err := db.Query("SELECT ID, Nama, NPM, Kelas, Minat FROM mahasiswa")
+  if err != nil {
+    http.Error(w, "Database error: "+err.Error(), 500)
+    return
+  }
 
-	defer rows.Close()
+  defer rows.Close()
 
-	var mahasiswaList []Mahasiswa
-	for rows.Next() {
-		var m Mahasiswa
-		err := rows.Scan(&m.ID, &m.Nama, &m.NPM, &m.Kelas, &m.Minat)
-		if err != nil {
-			http.Error(w, "Data error: "+err.Error(), 500)
-			return
-		}
-		mahasiswaList = append(mahasiswaList, m)
-	}
+  var mahasiswaList []Mahasiswa
+  for rows.Next() {
+    var m Mahasiswa
+    err := rows.Scan(&m.ID, &m.Nama, &m.NPM, &m.Kelas, &m.Minat)
+    if err != nil {
+      http.Error(w, "Data error: "+err.Error(), 500)
+      return
+    }
+    mahasiswaList = append(mahasiswaList, m)
+  }
 
-	err = tmpl.Execute(w, mahasiswaList)
-	if err != nil {
-		http.Error(w, "Template error: "+err.Error(), 500)
-	}
+  err = tmpl.Execute(w, mahasiswaList)
+  if err != nil {
+    http.Error(w, "Template error: "+err.Error(), 500)
+  }
 }
 
 // tambah mahasiswa
 func tambahHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-		t := template.Must(template.New("form").Parse(formTemplate))
-		t.Execute(w, nil)
-		return
-	}
+  if r.Method == http.MethodGet {
+    t := template.Must(template.New("form").Parse(formTemplate))
+    t.Execute(w, nil)
+    return
+  }
 
-	if err := r.ParseForm(); err != nil { 
-		http.Error(w, "Form error", 400)
-		return
-	}
+  if err := r.ParseForm(); err != nil { 
+    http.Error(w, "Form error", 400)
+    return
+  }
 
-	nama := r.FormValue("nama")
-	npm := r.FormValue("npm")
-	kelas := r.FormValue("kelas")
-	minat := r.FormValue("minat")
+  nama := r.FormValue("nama")
+  npm := r.FormValue("npm")
+  kelas := r.FormValue("kelas")
+  minat := r.FormValue("minat")
 
-	_, err := db.Exec("INSERT INTO mahasiswa (Nama, NPM, Kelas, Minat) VALUES (?, ?, ?, ?)", nama, npm, kelas, minat)
-	if err != nil {
-		http.Error(w, "Insert failed: "+err.Error(), 500)
-		return
-	}
+  _, err := db.Exec("INSERT INTO mahasiswa (Nama, NPM, Kelas, Minat) VALUES (?, ?, ?, ?)", nama, npm, kelas, minat)
+  if err != nil {
+    http.Error(w, "Insert failed: "+err.Error(), 500)
+    return
+  }
 
-	http.Redirect(w, r, "/", http.StatusSeeOther) 
+  http.Redirect(w, r, "/", http.StatusSeeOther) 
 }
 
 // edit mahasiswa
 func editHandler(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, "/edit/")
+  id := strings.TrimPrefix(r.URL.Path, "/edit/")
 
-	if r.Method == http.MethodGet {
-		row := db.QueryRow("SELECT ID, Nama, NPM, Kelas, Minat FROM mahasiswa WHERE ID = ?", id)
-		var m Mahasiswa
+  if r.Method == http.MethodGet {
+    row := db.QueryRow("SELECT ID, Nama, NPM, Kelas, Minat FROM mahasiswa WHERE ID = ?", id)
+    var m Mahasiswa
 
-		err := row.Scan(&m.ID, &m.Nama, &m.NPM, &m.Kelas, &m.Minat)
-		if err != nil {
-			http.Error(w, "Mahasiswa not found", 404)
-			return
-		}
+    err := row.Scan(&m.ID, &m.Nama, &m.NPM, &m.Kelas, &m.Minat)
+    if err != nil {
+      http.Error(w, "Mahasiswa not found", 404)
+      return
+    }
 
-		t := template.Must(template.New("form").Parse(formTemplate))
-		t.Execute(w, m)
-		return
-	}
+    t := template.Must(template.New("form").Parse(formTemplate))
+    t.Execute(w, m)
+    return
+  }
 
-	if err := r.ParseForm(); err != nil { 
-		http.Error(w, "Form error", 400)
-		return
-	}
+  if err := r.ParseForm(); err != nil { 
+    http.Error(w, "Form error", 400)
+    return
+  }
 
-	nama := r.FormValue("nama")
-	npm := r.FormValue("npm")
-	kelas := r.FormValue("kelas")
-	minat := r.FormValue("minat")
+  nama := r.FormValue("nama")
+  npm := r.FormValue("npm")
+  kelas := r.FormValue("kelas")
+  minat := r.FormValue("minat")
 
-	_, err := db.Exec("UPDATE mahasiswa SET Nama=?, NPM=?, Kelas=?, Minat=? WHERE ID=?", nama, npm, kelas, minat, id)
-	if err != nil {
-		http.Error(w, "Update failed: "+err.Error(), 500)
-		return
-	}
+  _, err := db.Exec("UPDATE mahasiswa SET Nama=?, NPM=?, Kelas=?, Minat=? WHERE ID=?", nama, npm, kelas, minat, id)
+  if err != nil {
+    http.Error(w, "Update failed: "+err.Error(), 500)
+    return
+  }
 
-	http.Redirect(w, r, "/", http.StatusSeeOther) 
+  http.Redirect(w, r, "/", http.StatusSeeOther) 
 }
 
 // hapus mahasiswa
 func hapusHandler(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, "/delete/")
+  id := strings.TrimPrefix(r.URL.Path, "/delete/")
 
-	_, err := db.Exec("DELETE FROM mahasiswa WHERE ID = ?", id)
-	if err != nil {
-		http.Error(w, "Delete failed: "+err.Error(), 500)
-		return
-	}
+  _, err := db.Exec("DELETE FROM mahasiswa WHERE ID = ?", id)
+  if err != nil {
+    http.Error(w, "Delete failed: "+err.Error(), 500)
+    return
+  }
 
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+  http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 // detail mahasiswa
 func detailsHandler(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, "/details/")
+  id := strings.TrimPrefix(r.URL.Path, "/details/")
 
-	row := db.QueryRow("SELECT ID, Nama, NPM, Kelas, Minat FROM mahasiswa WHERE ID = ?", id)
-	var m Mahasiswa
-	err := row.Scan(&m.ID, &m.Nama, &m.NPM, &m.Kelas, &m.Minat)
-	if err != nil {
-		http.Error(w, "Mahasiswa not found: "+err.Error(), http.StatusNotFound)
-		return
-	}
+  row := db.QueryRow("SELECT ID, Nama, NPM, Kelas, Minat FROM mahasiswa WHERE ID = ?", id)
+  var m Mahasiswa
+  err := row.Scan(&m.ID, &m.Nama, &m.NPM, &m.Kelas, &m.Minat)
+  if err != nil {
+    http.Error(w, "Mahasiswa not found: "+err.Error(), http.StatusNotFound)
+    return
+  }
 
-	err = detailsTmpl.Execute(w, m)
-	if err != nil {
-		http.Error(w, "Template error: "+err.Error(), http.StatusInternalServerError)
-	}
+  err = detailsTmpl.Execute(w, m)
+  if err != nil {
+    http.Error(w, "Template error: "+err.Error(), http.StatusInternalServerError)
+  }
 }
 
 // hal utama
